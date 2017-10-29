@@ -1,7 +1,7 @@
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 RACE := $(shell test $$(go env GOARCH) != "amd64" || (echo "-race"))
 VERSION := $(shell grep "const Version " version/const.go | sed -E 's/.*"(.+)"$$/\1/')
-SRC = main.go ./driver/conf.go
+SRC = main.go
 BINARY ?= docker-confvol-plugin
 BINDIR ?= ./bin/
 
@@ -35,7 +35,8 @@ deps:
 
 build: $(SRC)
 	@echo "Compiling..."
-	go build -o "$(BINDIR)$(BINARY)" .
+	@mkdir -p "$(BINDIR)"
+	go build -o "$(BINDIR)$(BINARY)" $^
 	@echo "All done! The binaries is in ./bin let's have fun!"
 
 vet: ## run go vet
