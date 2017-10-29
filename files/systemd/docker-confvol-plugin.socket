@@ -1,0 +1,9 @@
+[Unit]
+Description=Docker config volume driver for libkv based backends
+Documentation=man:docker-confvol-plugin(8)
+
+[Socket]
+ListenStream=/run/docker/plugins/confvol.sock
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Docker config volume driver for libkv based backends
+Documentation=man:docker-confvol-plugin(8)
+Before=docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/docker/docker-confvol-plugin
+ExecStart=/usr/libexec/docker/docker-confvol-plugin
+
+[Install]
+WantedBy=multi-user.target
