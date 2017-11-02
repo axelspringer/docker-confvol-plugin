@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"strconv"
 
@@ -11,18 +10,32 @@ import (
 )
 
 func main() {
+	logger := logrus.New()
 	debug := os.Getenv("DEBUG")
 	if ok, _ := strconv.ParseBool(debug); ok {
-		logrus.SetLevel(logrus.DebugLevel)
+		logger.SetLevel(logrus.DebugLevel)
 	}
 
-	volumeDriver, err := driver.NewConfigVolume()
-	if err != nil {
-		log.Fatal(err)
+	/*
+		configFilePath := "/etc/docker/docker-confvol-plugin"
+		config, cerr := driver.LoadConfigurationFromFile(configFilePath)
+		if cerr != nil {
+			logger.Fatal(cerr)
+		}
+	*/
+
+	volumeStore, serr := driver.NewStore([]string{"172.17.0.2:4001"}, logger)
+	if serr != nil {
+		logger.Fatal(serr)
+	}
+
+	volumeDriver, verr := driver.NewConfigVolume(logger, volumeStore)
+	if verr != nil {
+		logger.Fatal(verr)
 	}
 
 	volumeHandler := volume.NewHandler(volumeDriver)
 	if err := volumeHandler.ServeUnix("confvol", 0); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }

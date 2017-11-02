@@ -2,90 +2,68 @@
 [![Volkswagen](https://auchenberg.github.io/volkswagen/volkswargen_ci.svg?v=1)](https://github.com/auchenberg/volkswagen)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-# kombinat api
+# Docker Configuration Volume plugin
 
-A golang app created with `yo golang`.
+## Dependencies
 
-> :construction_worker: This is work in progress and many things are subject to change
+* go
+* make
+* systemd
+* docker
 
-## Publish a Package
-
-Each package has its own directory, with subdirectories for package revisions. Their package folder contains various files describing how to install, uninstall and configure it.
-
-### Folder Structure
-
-> Your universe is best kept in a Git to have revisions
-
-A universe has the following folder structure.
+### Install golang dependend packages
 
 ```
-└── packages/F/foo
-    ├── 0
-    │   ├── install.json
-    │   ├── uninstall.json
-    │   ├── marathon.json
-    │   ├── package.json
-    ├── 1
-    │   ├── install.json
-    │   ├── uninstall.json
-    │   ├── marathon.json
-    │   ├── package.json
-    └── ...
+make deps
 ```
 
-All meta information about a universe must also be stored within.
+## Configuration
+
+Main configuration file ```/etc/docker/docker-confvol-plugin```
+
+## Build
+
+Build the whole project
+```make build man```
+or in short
+```make``` 
+
+
+## Installation
 
 ```
-└── meta
-    ├── schema.json
-    └── ...
-```
+sudo -i
 
-### `package.json`
+make
+make install
 
-Contains general information about a package when published.
-
-### `install.json`
-
-Contains all information necessary to install this package.
-
-### `uninstall.json`
-
-Contains all information necessary to uninstall this package.
-
-### `marathon.json`
-
-> we currently support Marathon up to `1.4.x`, but working hard to move to `1.5.x`
-
-When using [Marathon](https://mesosphere.github.io) to run long standing task on Mesos this config contains the description of such. Please, consult the [Marathon Docs](https://mesosphere.github.io/marathon/docs) as how to write such config.
-
-### `chronos.json`
-
-When using [Chronos](https://github.com/mesos/chronos) to run scheduled task, you can provide a config for it within your package. It is then applied in the installation process.
-
-
-## Examples
-
-Make an install request with the `example/data.json`.
-
-```json
-curl -d "@install.json" -X POST http://localhost:8080/install
-```
-
-## Getting Started
-
-Install neat tools and dependencies.
+systemctl daemon-reload
+systemctl start docker-confvol-plugin
 
 ```
-make deps && make restore
-```
 
-Build the app.
+### Use the plugin
 
 ```
-make build
+docker run --volume-driver confvol --volume confvol-48E014D6-1B7F-4634-B883-3B787AC84032:/data alpine sleep 60
 ```
 
+```
+docker run \
+    --mount volume-driver=confvol,source=48E014D6-1B7F-4634-B883-3B787AC84032,target=/var/www/htdocs,volume-opt=o=/app/nginx/htdocs \
+    --mount volume-driver=confvol,source=48E014D6-1B7F-4634-B883-3B787AC84032,target=/etc/nginx/conf.d/default,volume-opt=o=/app/nginx/conf \
+    alpine sleep 60
+```
+
+## Docs
+
+### Useful ressources
+
+* [https://docs.docker.com/engine/extend/plugin_api/](https://docs.docker.com/engine/extend/plugin_api/)
+* [https://docs.docker.com/engine/extend/plugins_volume/
+](https://docs.docker.com/engine/extend/plugins_volume/)
+* [https://blog.codeship.com/extend-docker-via-plugin/](https://blog.codeship.com/extend-docker-via-plugin/)
+* [https://github.com/docker/go-plugins-helpers](https://github.com/docker/go-plugins-helpers)
 
 ## License
 [Apache-2.0](/LICENSE)

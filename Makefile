@@ -18,12 +18,14 @@ help:
 	@echo 'Usage:'
 	@echo '    make deps     		Install go deps.'
 	@echo '    make build    		Compile the project.'
+	@echo '    make man     		Create man doc'
 	@echo '    make restore  		Restore all dependencies.'
 	@echo '    make clean    		Clean the directory tree.'
 	@echo
 
 test: ## run tests, except integration tests
-	@go test ${RACE} ${PACKAGES}
+	#@go test ${RACE} ${PACKAGES}
+	@go test -timeout 30s ./driver -run ^TestDriver$
 
 deps:
 	go get -u github.com/mitchellh/gox
@@ -57,4 +59,4 @@ install:
 restore:
 	dep ensure
 
-.PHONY: install deps man
+.PHONY: install deps man restore
