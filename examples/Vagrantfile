@@ -1,0 +1,69 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+    config.vm.box = "ubuntu/xenial64"
+    config.vm.network "private_network", ip: "192.168.33.10"
+  
+    config.ssh.forward_agent = true
+    config.timezone.value = "CET"
+
+    if (/darwin/ =~ RUBY_PLATFORM) != nil
+        config.vm.synced_folder "./../", "/go/src/github.com/axelspringer/docker-conf-volume", nfs: true, :map_uid => 0, :map_gid => 0, :bsd__nfs_options => ["maproot=0:0", "tcp", "fsc"]
+    else
+        config.vm.synced_folder "./../", "/go/src/github.com/axelspringer/docker-conf-volume", nfs: true, :linux__nfs_options => ["no_root_squash", "tcp", "fsc"]
+    end
+
+    config.vbguest.auto_update = true
+    config.vm.provision :shell, :inline => <<END
+        echo "Provisioner"
+
+        apt-get update -y
+        apt-get upgrade -y
+        apt-get autoremove -y
+        apt-get install software-properties-common curl
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        apt-get update -y
+        apt-cache policy docker-ce
+        
+        apt-get install -y golang-1.9
+        echo "PATH=$PATH:/usr/lib/go-1.9/bin/:/go/bin/" >> /etc/environment
+        echo "GOPATH=/go/" >> /etc/environment
+
+        apt-get install -y systemd
+        apt-get install -y libltdl7 aufs-tools cgroupfs-mount cgroup-lite
+
+        apt-get install -y docker-ce
+
+        usermod -aG docker ubuntu
+        chown ubuntu: -R /var/run/docker.sock
+
+        systemctl daemon-reload
+        systemctl enable docker
+        systemctl start docker
+
+        # additional golang tools
+        # go get github.com/coreos/etcd/cmd/etcdctl
+
+        # add docker container
+        # etcd
+        docker run --rm --name etcd -d -it -p 4001:4001 -p 7001:7001 -v /tmp/etcd/:/data microbox/etcd:latest -name foobarkv
+        ETCD_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' etcd)
+
+        # etcd browser
+        git clone https://github.com/henszey/etcd-browser
+        cd etcd-browser
+        docker build -t etcd-browser .
+        docker run --rm --name etcd-browser -p 0.0.0.0:8000:8000 --env ETCD_HOST=$ETCD_IP --env AUTH_PASS=doe -t -i -d etcd-browser
+END
+
+
+
+    config.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--memory", 2048]
+        vb.customize ["modifyvm", :id, "--cpus", 2]
+        vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000]
+    end
+
+end

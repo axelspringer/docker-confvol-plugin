@@ -44,15 +44,25 @@ systemctl start docker-confvol-plugin
 
 ### Use the plugin
 
-```
-docker run --volume-driver confvol --volume confvol-48E014D6-1B7F-4634-B883-3B787AC84032:/data alpine sleep 60
-```
+You can use a direct file mount like
+
+```--mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=/dev/example/nginx/conf.d/site.conf```
+
+Or you can mount folders
+
+```--mount volume-driver=confvol,target=/var/www/htdocs/,source=/dev/example/nginx/htdocs/```
+
+For the complete example start the vagrant box, the etcd and the etcd browser. Fill the struct from examples/etcd_root to the etcd.
+Then run ... 
 
 ```
 docker run \
-    --mount volume-driver=confvol,source=48E014D6-1B7F-4634-B883-3B787AC84032,target=/var/www/htdocs,volume-opt=o=/app/nginx/htdocs \
-    --mount volume-driver=confvol,source=48E014D6-1B7F-4634-B883-3B787AC84032,target=/etc/nginx/conf.d/default,volume-opt=o=/app/nginx/conf \
-    alpine sleep 60
+    --rm \
+    --mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=/dev/example/nginx/conf.d/site.conf \ 
+    --mount volume-driver=confvol,target=/var/www/htdocs/,source=/dev/example/nginx/htdocs/ \
+    -p 8080:8080 \
+    -d \
+    nginx 
 ```
 
 ## Docs

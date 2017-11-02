@@ -2,8 +2,11 @@ package driver
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -34,31 +37,54 @@ func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, re
 	for _, pair := range kvEntries {
 		v.logger.Infof("Sync pair %#v", pair.Key)
 
-		p, e := kv.List(pair.Key)
-		v.logger.Infof("List key %s %#v %#v", pair.Key, p, e)
-		g, e2 := kv.Get(pair.Key)
-		v.logger.Infof("Get key %s %#v %#v", pair.Key, g, e2)
-
 		filePath := pair.Key[len(relativePath):]
+		dstPath := path.Join(basePath, filePath)
 
-		v.logger.Infof("Reduce to %s", filePath)
+		entryList, _ := kv.List(pair.Key)
+		entryData, _ := kv.Get(pair.Key)
 
+		isFolder := len(entryData.Value) == 0
+
+		if isFolder == true {
+			os.MkdirAll(dstPath, os.ModePerm)
+			v.syncFolder(entryList, dstPath, pair.Key)
+		} else {
+			if err := ioutil.WriteFile(dstPath, entryData.Value, 0644); err != nil {
+				v.logger.Error(err)
+			}
+		}
 	}
 }
 
 func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 	kv := v.store.Client
-	entries, err := kv.List(vm.Relative)
 
-	v.logger.Infof("Sync mount point %s", vm.Root)
+	syncFolder := strings.HasSuffix(vm.Relative, "/")
 
-	if err != nil {
-		v.logger.Error(err)
-		return err
+	if syncFolder == true {
+		os.MkdirAll(vm.Root, os.ModePerm)
+		entries, err := kv.List(vm.Relative)
+
+		if err != nil {
+			v.logger.Error(err)
+			return err
+		}
+
+		v.syncFolder(entries, vm.Root, vm.Relative)
+	} else {
+		os.MkdirAll(path.Dir(vm.Root), os.ModePerm)
+		entry, err := kv.Get(vm.Relative)
+
+		if err != nil {
+			v.logger.Error(err)
+			return err
+		}
+
+		if err := ioutil.WriteFile(vm.Root, entry.Value, 0644); err != nil {
+			v.logger.Error(err)
+			return err
+		}
 	}
-
-	v.logger.Infof("Success in pulling data")
-	v.syncFolder(entries, vm.Root, vm.Relative)
 
 	return nil
 }
@@ -77,13 +103,6 @@ func (v *ConfigVolume) Create(r *volume.CreateRequest) error {
 
 	// create base dir
 	volumePath := filepath.Join(v.mountPoint, r.Name)
-	os.MkdirAll(volumePath, os.ModePerm)
-
-	_, err := os.Lstat(volumePath)
-	if err != nil {
-		logrus.Errorf("Error %s %v", volumePath, err.Error())
-		return err
-	}
 
 	vm := &VolumeMount{
 		Root:             volumePath,
@@ -177,6 +196,7 @@ func (v *ConfigVolume) Unmount(r *volume.UnmountRequest) error {
 	return nil
 }
 
+// Capabilities define the scope of this plugin
 func (v *ConfigVolume) Capabilities() *volume.CapabilitiesResponse {
 	return &volume.CapabilitiesResponse{
 		Capabilities: volume.Capability{
