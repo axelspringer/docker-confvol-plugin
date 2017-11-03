@@ -31,18 +31,20 @@ type ConfigVolume struct {
 	store      *Store
 }
 
+// synchronize a list of kv entries to the fs
 func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, relativePath string) {
 	kv := v.store.Client
 
 	for _, pair := range kvEntries {
-		v.logger.Infof("Sync pair %#v", pair.Key)
+		v.logger.Debugf("Sync source %s", pair.Key)
 
-		filePath := pair.Key[len(relativePath):]
-		dstPath := path.Join(basePath, filePath)
+		fileName := pair.Key[len(relativePath):]
+		dstPath := path.Join(basePath, fileName)
 
 		entryList, _ := kv.List(pair.Key)
 		entryData, _ := kv.Get(pair.Key)
 
+		//TODO find a better way to distinguish files from folders (EC empty folder or empty file)
 		isFolder := len(entryData.Value) == 0
 
 		if isFolder == true {
@@ -56,6 +58,7 @@ func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, re
 	}
 }
 
+// sync mount point. Folder mounts MUST end with a slash
 func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 	kv := v.store.Client
 
@@ -89,15 +92,21 @@ func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 	return nil
 }
 
-// Create This function is called each time a client wants to create a volume
+// volumeExist
+func (v *ConfigVolume) volumeExist(name string) bool {
+	_, ok := v.volumes[name]
+	return ok
+}
+
+// Create is called when a volume didn't exist yet
+// In this case a former Get call returned
 func (v *ConfigVolume) Create(r *volume.CreateRequest) error {
-	v.logger.Infof("Create volume %s", r.Name)
-	v.logger.Infof("Dump %#v", r)
+	v.logger.Debugf("Create volume %s", r.Name)
 	v.m.Lock()
 	defer v.m.Unlock()
 
 	// already loaded
-	if _, ok := v.volumes[r.Name]; ok {
+	if v.volumeExist(r.Name) {
 		return nil
 	}
 
@@ -114,9 +123,11 @@ func (v *ConfigVolume) Create(r *volume.CreateRequest) error {
 	return nil
 }
 
-// List returns a list of all mounted volumes
+// List returns a list of the available volumes
 func (v *ConfigVolume) List() (*volume.ListResponse, error) {
-	v.logger.Printf("List\n")
+	v.logger.Debugf("List volumes")
+	v.m.Lock()
+	defer v.m.Unlock()
 
 	volumes := []*volume.Volume{}
 
@@ -130,17 +141,20 @@ func (v *ConfigVolume) List() (*volume.ListResponse, error) {
 	return &volume.ListResponse{Volumes: volumes}, nil
 }
 
-// Returns a volume by name
+/* Get is the first request from the docker engine that reach the plugin
+ * If a volume, specified by name (a path in this case), is prepared and ready to mount
+ * then Create is not called
+ */
 func (v *ConfigVolume) Get(r *volume.GetRequest) (*volume.GetResponse, error) {
-	v.logger.Printf("Get %#v\n", r)
+	v.logger.Debugf("Get volume %s", r.Name)
+	v.m.Lock()
+	defer v.m.Unlock()
 
-	if vol, ok := v.volumes[r.Name]; ok {
-		v.logger.Printf("Found entry %#v\n", vol)
-
+	if v.volumeExist(r.Name) {
 		return &volume.GetResponse{
 			Volume: &volume.Volume{
 				Name:       r.Name,
-				Mountpoint: vol.Root,
+				Mountpoint: v.volumes[r.Name].Root,
 			},
 		}, nil
 	}
@@ -148,14 +162,13 @@ func (v *ConfigVolume) Get(r *volume.GetRequest) (*volume.GetResponse, error) {
 	return nil, errors.New("Element not found")
 }
 
-// Remove is called when the client wants to remove the vol
+// Remove is called when the client explicitly remove the volume (docker volume rm)
 func (v *ConfigVolume) Remove(r *volume.RemoveRequest) error {
-	v.logger.Printf("Remove %#v\n", r)
-
+	v.logger.Debugf("Remove volume %s", r.Name)
 	v.m.Lock()
 	defer v.m.Unlock()
 
-	if _, ok := v.volumes[r.Name]; ok {
+	if v.volumeExist(r.Name) {
 		delete(v.volumes, r.Name)
 	}
 
@@ -164,34 +177,44 @@ func (v *ConfigVolume) Remove(r *volume.RemoveRequest) error {
 
 // Path
 func (v *ConfigVolume) Path(r *volume.PathRequest) (*volume.PathResponse, error) {
-	v.logger.Printf("Path %s\n", r.Name)
+	v.logger.Debugf("Path %s", r.Name)
+	v.m.Lock()
+	defer v.m.Unlock()
 
-	if vm, ok := v.volumes[r.Name]; ok {
-		return &volume.PathResponse{
-			Mountpoint: vm.Root,
-		}, nil
+	res := &volume.PathResponse{}
+
+	if v.volumeExist(r.Name) {
+		res = &volume.PathResponse{
+			Mountpoint: v.volumes[r.Name].Root,
+		}
 	}
 
-	return &volume.PathResponse{}, nil
+	return res, nil
 }
 
 // Mount can be used for ressource allocation
 func (v *ConfigVolume) Mount(r *volume.MountRequest) (*volume.MountResponse, error) {
-	v.logger.Printf("Mounting volume %s\n%#v\n", r.Name, r)
+	v.logger.Debugf("Remove volume %s", r.Name)
+	v.m.Lock()
+	defer v.m.Unlock()
+
+	res := &volume.MountResponse{}
 
 	if vm, ok := v.volumes[r.Name]; ok {
 		v.syncMountPoint(vm)
-		return &volume.MountResponse{
+		res = &volume.MountResponse{
 			Mountpoint: vm.Root,
-		}, nil
+		}
 	}
 
-	return &volume.MountResponse{}, nil
+	return res, nil
 }
 
 // Unmount
 func (v *ConfigVolume) Unmount(r *volume.UnmountRequest) error {
-	v.logger.Printf("Unmounting volume %#v\n", r)
+	v.logger.Debugf("Unmounting volume %s", r.Name)
+	v.m.Lock()
+	defer v.m.Unlock()
 
 	return nil
 }

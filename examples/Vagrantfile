@@ -58,8 +58,6 @@ Vagrant.configure(2) do |config|
         docker run --rm --name etcd-browser -p 0.0.0.0:8000:8000 --env ETCD_HOST=$ETCD_IP --env AUTH_PASS=doe -t -i -d etcd-browser
 END
 
-
-
     config.vm.provider :virtualbox do |vb|
         vb.customize ["modifyvm", :id, "--memory", 2048]
         vb.customize ["modifyvm", :id, "--cpus", 2]
