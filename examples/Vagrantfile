@@ -27,7 +27,8 @@ Vagrant.configure(2) do |config|
         apt-get update -y
         apt-cache policy docker-ce
         
-        apt-get install -y golang-1.9
+        wget -O /opt/go-1.9.2.tar.gz https://redirector.gvt1.com/edgedl/go/go1.9.2.linux-amd64.tar.gz
+        (cd /opt/ && tar -xzvf go-1.9.2.tar.gz && mv go /usr/lib/go-1.9)
         echo "PATH=$PATH:/usr/lib/go-1.9/bin/:/go/bin/" >> /etc/environment
         echo "GOPATH=/go/" >> /etc/environment
 
@@ -56,6 +57,13 @@ Vagrant.configure(2) do |config|
         cd etcd-browser
         docker build -t etcd-browser .
         docker run --rm --name etcd-browser -p 0.0.0.0:8000:8000 --env ETCD_HOST=$ETCD_IP --env AUTH_PASS=doe -t -i -d etcd-browser
+
+        # etcd data import
+        ETCD=http://127.0.0.1:4001/v2/keys
+        find /go/src/github.com/axelspringer/docker-conf-volume/examples/etcd_datatree -type f -print0 | while IFS= read -r -d $'\0' line; do
+            path=`echo $line | sed 's#^.*etcd_datatree/##'`
+            curl "${ETCD}/${path}" -XPUT --data-urlencode value@$line
+        done
 END
 
     config.vm.provider :virtualbox do |vb|
