@@ -10,7 +10,7 @@ PLUGIN_DESC_INSTALL_DIR ?= $(DESTDIR)/etc/docker/
 SYSTEM_INSTALL_DIR ?= $(DESTDIR)/usr/lib/systemd/system/
 MAN_INSTALL_DIR ?= $(DESTDIR)/usr/share/man/
 
-all: build man
+all: test build man
 
 help:
 	@echo 'Available commands:'
@@ -25,7 +25,7 @@ help:
 	@echo
 
 test: 
-	ginkgo --cover -v driver
+	ginkgo --cover driver
 	go tool cover -html=driver/driver.coverprofile -o driver_test_coverage.html
 
 deps:

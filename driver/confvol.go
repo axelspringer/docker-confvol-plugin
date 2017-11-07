@@ -227,12 +227,12 @@ func (v *ConfigVolume) Capabilities() *volume.CapabilitiesResponse {
 }
 
 // NewConfigVolume creates a new ConfigVolume
-func NewConfigVolume(l *logrus.Logger, s Store) (*ConfigVolume, error) {
+func NewConfigVolume(c *Configuration, l *logrus.Logger, s Store) (*ConfigVolume, error) {
 	return &ConfigVolume{
 		logger:     l,
 		volumes:    make(map[string]*VolumeMount),
 		m:          &sync.Mutex{},
-		mountPoint: "/tmp/confvol/",
+		mountPoint: c.Driver.RootPath,
 		store:      s,
 	}, nil
 }

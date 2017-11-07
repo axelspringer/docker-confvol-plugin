@@ -36,13 +36,13 @@ func (s *LibKVStore) List(key string) ([]*StoreKVPair, error) {
 }
 
 // NewStore creates a new store. suprise ..
-func NewStore(addrList []string, logger *logrus.Logger) (Store, error) {
+func NewStore(c *Configuration, logger *logrus.Logger) (Store, error) {
 	s := &LibKVStore{}
 
 	// Initialize a new store with etcd
 	kv, err := libkv.NewStore(
-		store.ETCD,
-		addrList,
+		store.Backend(c.Backend.Type),
+		c.GetBackendEndpointList(),
 		&store.Config{
 			ConnectionTimeout: 10 * time.Second,
 		},

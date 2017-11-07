@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"strconv"
 
@@ -9,6 +10,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	configuration  *driver.Configuration
+	configFilePath string
+)
+
+// process flags
+func init() {
+	// args
+	flag.StringVar(&configFilePath, "config", "", "Path to the configuration file")
+	// parse
+	flag.Parse()
+}
+
 func main() {
 	logger := logrus.New()
 	debug := os.Getenv("DEBUG")
@@ -16,24 +30,34 @@ func main() {
 		logger.SetLevel(logrus.DebugLevel)
 	}
 
-	/*
-		configFilePath := "/etc/docker/docker-confvol-plugin"
-		config, cerr := driver.LoadConfigurationFromFile(configFilePath)
-		if cerr != nil {
-			logger.Fatal(cerr)
-		}
-	*/
+	// configuration
+	configuration = driver.NewConfiguration()
+	if len(configFilePath) > 0 {
+		configuration.LoadFromFile(configFilePath)
+	}
 
-	volumeStore, serr := driver.NewStore([]string{"172.17.0.2:4001"}, logger)
+	// check configuration integrity
+	if integer, errList := configuration.CheckIntegrity(); integer == false {
+		for _, err := range errList {
+			logger.Error(err)
+		}
+
+		os.Exit(1)
+	}
+
+	// create kv store
+	volumeStore, serr := driver.NewStore(configuration, logger)
 	if serr != nil {
 		logger.Fatal(serr)
 	}
 
-	volumeDriver, verr := driver.NewConfigVolume(logger, volumeStore)
+	// create volume driver
+	volumeDriver, verr := driver.NewConfigVolume(configuration, logger, volumeStore)
 	if verr != nil {
 		logger.Fatal(verr)
 	}
 
+	// create docker plugin socket
 	volumeHandler := volume.NewHandler(volumeDriver)
 	if err := volumeHandler.ServeUnix("confvol", 0); err != nil {
 		logger.Fatal(err)
