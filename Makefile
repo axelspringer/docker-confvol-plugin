@@ -18,22 +18,25 @@ help:
 	@echo 'Usage:'
 	@echo '    make deps     		Install go deps.'
 	@echo '    make build    		Compile the project.'
+	@echo '    make test    		Run ginkgo test suites.'
 	@echo '    make man     		Create man doc'
 	@echo '    make restore  		Restore all dependencies.'
 	@echo '    make clean    		Clean the directory tree.'
 	@echo
 
-test: ## run tests, except integration tests
-	#@go test ${RACE} ${PACKAGES}
-	@go test -timeout 30s ./driver -run ^TestDriver$
+test: 
+	ginkgo --cover -v driver
+	go tool cover -html=driver/driver.coverprofile -o driver_test_coverage.html
 
 deps:
 	go get -u github.com/mitchellh/gox
 	go get -u github.com/onsi/gomega
 	go get -u github.com/onsi/ginkgo/ginkgo
-	go get -u github.com/Sirupsen/logrus
+	go get -u github.com/sirupsen/logrus
 	go get -u github.com/docker/go-plugins-helpers/volume
+	go get -u github.com/docker/libkv
 	go get -u github.com/cpuguy83/go-md2man
+	go get -u github.com/coreos/etcd/client
 
 build: $(SRC)
 	@echo "Compiling..."

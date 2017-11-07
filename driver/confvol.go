@@ -9,10 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/docker/go-plugins-helpers/volume"
-	"github.com/docker/libkv/store"
+	"github.com/sirupsen/logrus"
 )
 
 // VolumeMount
@@ -28,12 +26,12 @@ type ConfigVolume struct {
 	volumes    map[string]*VolumeMount
 	m          *sync.Mutex
 	mountPoint string
-	store      *Store
+	store      Store
 }
 
 // synchronize a list of kv entries to the fs
-func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, relativePath string) {
-	kv := v.store.Client
+func (v *ConfigVolume) syncFolder(kvEntries []*StoreKVPair, basePath string, relativePath string) {
+	s := v.store
 
 	for _, pair := range kvEntries {
 		v.logger.Debugf("Sync source %s", pair.Key)
@@ -41,8 +39,8 @@ func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, re
 		fileName := pair.Key[len(relativePath):]
 		dstPath := path.Join(basePath, fileName)
 
-		entryList, _ := kv.List(pair.Key)
-		entryData, _ := kv.Get(pair.Key)
+		entryList, _ := s.List(pair.Key)
+		entryData, _ := s.Get(pair.Key)
 
 		//TODO find a better way to distinguish files from folders (EC empty folder or empty file)
 		isFolder := len(entryData.Value) == 0
@@ -60,13 +58,13 @@ func (v *ConfigVolume) syncFolder(kvEntries []*store.KVPair, basePath string, re
 
 // sync mount point. Folder mounts MUST end with a slash
 func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
-	kv := v.store.Client
+	s := v.store
 
 	syncFolder := strings.HasSuffix(vm.Relative, "/")
 
 	if syncFolder == true {
 		os.MkdirAll(vm.Root, os.ModePerm)
-		entries, err := kv.List(vm.Relative)
+		entries, err := s.List(vm.Relative)
 
 		if err != nil {
 			v.logger.Error(err)
@@ -76,7 +74,7 @@ func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 		v.syncFolder(entries, vm.Root, vm.Relative)
 	} else {
 		os.MkdirAll(path.Dir(vm.Root), os.ModePerm)
-		entry, err := kv.Get(vm.Relative)
+		entry, err := s.Get(vm.Relative)
 
 		if err != nil {
 			v.logger.Error(err)
@@ -229,7 +227,7 @@ func (v *ConfigVolume) Capabilities() *volume.CapabilitiesResponse {
 }
 
 // NewConfigVolume creates a new ConfigVolume
-func NewConfigVolume(l *logrus.Logger, s *Store) (*ConfigVolume, error) {
+func NewConfigVolume(l *logrus.Logger, s Store) (*ConfigVolume, error) {
 	return &ConfigVolume{
 		logger:     l,
 		volumes:    make(map[string]*VolumeMount),

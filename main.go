@@ -4,9 +4,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/axelspringer/docker-conf-volume/driver"
 	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
