@@ -1,6 +1,8 @@
 package driver_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	. "github.com/axelspringer/docker-conf-volume/driver"
@@ -63,6 +65,23 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Driver.RootPath).To(Equal("/tmp/confvol/"))
 			Expect(conf.Backend.Type).To(Equal("etcd"))
 			Expect(conf.Generator.Disabled).To(Equal(true))
+		})
+
+		It("can handle valid json file", func() {
+			filePath := "/tmp/fauwoo6oeghahshie9Xo"
+			err := ioutil.WriteFile(filePath, []byte(validJSONConf), 0644)
+			Expect(err).To(BeNil())
+
+			conf := NewConfiguration()
+			err = conf.LoadFromFile(filePath)
+			Expect(err).To(BeNil())
+
+			Expect(conf.Driver.RootPath).To(Equal("/tmp/confvol/"))
+			Expect(conf.Backend.Type).To(Equal("etcd"))
+			Expect(conf.Generator.Disabled).To(Equal(true))
+
+			err = os.Remove(filePath)
+			Expect(err).To(BeNil())
 		})
 
 		It("can verify configuration integrity", func() {
