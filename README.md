@@ -45,15 +45,15 @@ systemctl start docker-confvol-plugin
 
 You can simply use a direct file mount like this
 
-```--mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/example/nginx/conf.d/site.conf```
+```--mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/nginx/etc/nginx/conf.d/site.conf```
 
 Or the same with a templated configuration
 
-```--mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/example/nginx/conf.d/site.conf,volume-opt=gen=1```
+```--mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/nginx/etc/nginx/conf.d/site.conf,volume-opt=gen=1```
 
 Or you can mount folders
 
-```--mount volume-driver=confvol,target=/var/www/htdocs/,source=dev/example/nginx/htdocs/```
+```--mount volume-driver=confvol,target=/var/www/htdocs/,source=dev/nginx/var/www/htdocs/```
 
 For the complete example start the vagrant box, the etcd and the etcd browser. Fill the struct from examples/etcd_root to the etcd.
 
