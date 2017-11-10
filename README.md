@@ -72,15 +72,15 @@ A more complex example with a templated nginx
 ```
 docker run \
     --rm \
-    --mount volume-driver=confvol,target=/etc/nginx/.htpasswd,source=dev/nginx/etc/nginx/.htpasswd,volume-opt=tmpl=1 \
-    --mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/nginx/etc/nginx/conf.d/site-basicauth.conf \ 
+    --mount volume-driver=confvol,target=/etc/nginx/.htpasswd,source=dev/nginx/etc/nginx/.htpasswd,volume-opt=tmpl=1 \    
+    --mount volume-driver=confvol,target=/etc/nginx/conf.d/site.conf,source=dev/nginx/etc/nginx/conf.d/site-basicauth.conf \
     --mount volume-driver=confvol,target=/var/www/htdocs/,source=dev/nginx/var/www/htdocs/ \
     -p 8080:8080 \
     -d \
     nginx 
 ```
 
-## Docs
+## Options
 
 #### Program arguments
 
