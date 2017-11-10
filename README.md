@@ -98,8 +98,7 @@ docker run \
 ### Useful ressources
 
 * [https://docs.docker.com/engine/extend/plugin_api/](https://docs.docker.com/engine/extend/plugin_api/)
-* [https://docs.docker.com/engine/extend/plugins_volume/
-](https://docs.docker.com/engine/extend/plugins_volume/)
+* [https://docs.docker.com/engine/extend/plugins_volume/](https://docs.docker.com/engine/extend/plugins_volume/)
 * [https://blog.codeship.com/extend-docker-via-plugin/](https://blog.codeship.com/extend-docker-via-plugin/)
 * [https://github.com/docker/go-plugins-helpers](https://github.com/docker/go-plugins-helpers)
 
