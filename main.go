@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"os"
-	"strconv"
 
 	"github.com/axelspringer/docker-conf-volume/driver"
 	"github.com/docker/go-plugins-helpers/volume"
@@ -13,25 +12,45 @@ import (
 var (
 	configuration  *driver.Configuration
 	configFilePath string
+	debugFlag      bool
 )
 
 // process flags
 func init() {
 	// args
 	flag.StringVar(&configFilePath, "config", "", "Path to the configuration file")
+	flag.BoolVar(&debugFlag, "debug", false, "Set debug mode")
 	// parse
 	flag.Parse()
 }
 
 func main() {
 	logger := logrus.New()
-	debug := os.Getenv("DEBUG")
-	if ok, _ := strconv.ParseBool(debug); ok {
-		logger.SetLevel(logrus.DebugLevel)
-	}
 
 	// configuration
 	configuration = driver.NewConfiguration()
+
+	// env root path
+	if p := os.Getenv("CONFVOL_DRIVER_ROOT"); len(p) > 0 {
+		configuration.Driver.RootPath = p
+	}
+
+	// env etcd instances
+	if e := os.Getenv("CONFVOL_BACKEND_ENDPOINTS"); len(e) > 0 {
+		configuration.Backend.Endpoints = e
+	}
+
+	// env root path
+	if d := os.Getenv("CONFVOL_DEBUG"); len(d) > 0 {
+		debugFlag = true
+	}
+
+	// set debug mode
+	//if debugFlag == true {
+	logger.SetLevel(logrus.DebugLevel)
+	//}
+
+	// load configuration from file
 	if len(configFilePath) > 0 {
 		configuration.LoadFromFile(configFilePath)
 	}

@@ -16,6 +16,7 @@ func TestTemplates(t *testing.T) {
 	RunSpecs(t, "Template Suite")
 }
 
+// StoreMock realize the Store interface to a inmem kvmap
 type StoreMock struct {
 	kvMap map[string]string
 	get   func(key string) (*StoreKVPair, error)
@@ -131,6 +132,7 @@ var _ = Describe("Template", func() {
 			Expect(err).To(BeNil())
 			Expect(output).Should(Equal("qwerty"))
 		})
+
 	})
 
 	// StoreGet template helper function
@@ -138,13 +140,19 @@ var _ = Describe("Template", func() {
 
 		It("should resolved to entry value on success", func() {
 			sm := newStoreMock(nil)
-			sm.kvMap["/foo/bar/A"] = "qwertyA"
+			sm.kvMap["/foo/bar/A"] = "A"
+			sm.kvMap["/foo/bar/B"] = "B"
+			sm.kvMap["/foo/bar/C"] = "C"
 
 			template := NewTemplate(sm)
 
 			output, err := template.Parse("{{range StoreList \"/foo/bar/\"}}{{ . }}{{end}}", nil)
 			Expect(err).To(BeNil())
-			Expect(output).Should(Equal("qwertyA"))
+			Expect(output).Should(HaveLen(3))
+
+			Expect(output).Should(ContainSubstring("A"))
+			Expect(output).Should(ContainSubstring("B"))
+			Expect(output).Should(ContainSubstring("C"))
 		})
 
 	})

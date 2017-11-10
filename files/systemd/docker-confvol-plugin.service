@@ -5,7 +5,7 @@ Before=docker.service
 
 [Service]
 Type=simple
-EnvironmentFile=-/etc/docker/docker-confvol-plugin
+EnvironmentFile=/etc/docker/docker-confvol-plugin
 ExecStart=/var/lib/docker/docker-confvol-plugin
 
 [Install]

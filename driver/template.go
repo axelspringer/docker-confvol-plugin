@@ -2,6 +2,7 @@ package driver
 
 import (
 	"bytes"
+	"strings"
 	"text/template"
 )
 
@@ -11,6 +12,7 @@ type ConfTemplate struct {
 	funcHelper template.FuncMap
 }
 
+// Parse evaluates a configuration template
 func (ct *ConfTemplate) Parse(t string, opt interface{}) (string, error) {
 	tmpl, err := template.New("conf_template").Funcs(ct.funcHelper).Parse(t)
 
@@ -26,16 +28,6 @@ func (ct *ConfTemplate) Parse(t string, opt interface{}) (string, error) {
 	return execBuffer.String(), nil
 }
 
-func (ct *ConfTemplate) ParseFromStore(k string) (string, error) {
-	tmpData, err := ct.store.Get(k)
-
-	if err != nil {
-		return "", err
-	}
-
-	return ct.Parse(string(tmpData.Value), nil)
-}
-
 // NewTemplate create a new configuration template
 func NewTemplate(s Store) *ConfTemplate {
 	t := &ConfTemplate{
@@ -43,6 +35,12 @@ func NewTemplate(s Store) *ConfTemplate {
 		funcHelper: template.FuncMap{},
 	}
 
+	// RemoveNewline is a helper remove trailing newlines
+	t.funcHelper["RemoveNewline"] = func(t string) string {
+		return strings.TrimSuffix(t, "\n")
+	}
+
+	// StoreGet is a helper to fetch a value from the kv
 	t.funcHelper["StoreGet"] = func(k string) string {
 		if t.store == nil {
 			return ""
@@ -56,6 +54,7 @@ func NewTemplate(s Store) *ConfTemplate {
 		return string(entry.Value)
 	}
 
+	// StoreList is listing all
 	t.funcHelper["StoreList"] = func(k string) []string {
 		ret := []string{}
 		if t.store == nil {

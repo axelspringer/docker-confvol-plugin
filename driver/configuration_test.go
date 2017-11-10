@@ -23,6 +23,12 @@ var _ = Describe("Configuration", func() {
 		It("has the correct type", func() {
 			Expect(NewConfiguration()).NotTo(BeNil())
 		})
+
+		It("has default values", func() {
+			conf := NewConfiguration()
+			Expect(conf.Backend.Type).Should(Equal("etcd"))
+			Expect(conf.Backend.Timeout).Should(Equal(30))
+		})
 	})
 
 	// Check error handling

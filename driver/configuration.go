@@ -24,6 +24,7 @@ type DriverSettings struct {
 type BackendSettings struct {
 	Type      string `json:"type"`
 	Endpoints string `json:"endpoints"`
+	Timeout   int    `json:"timeout"`
 }
 
 // GeneratorSettings
@@ -87,5 +88,6 @@ func (c *Configuration) GetBackendEndpointList() []string {
 func NewConfiguration() *Configuration {
 	c := &Configuration{}
 	c.Backend.Type = "etcd"
+	c.Backend.Timeout = 30
 	return c
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -15,9 +16,11 @@ import (
 
 // VolumeMount
 type VolumeMount struct {
-	Root             string
-	Relative         string
-	ReferenceCounter int
+	Root              string
+	Relative          string
+	ReferenceCounter  int
+	Mode              int
+	TemplateGenerator bool
 }
 
 // ConfigVolume driver
@@ -63,7 +66,6 @@ func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 	syncFolder := strings.HasSuffix(vm.Relative, "/")
 
 	if syncFolder == true {
-		os.MkdirAll(vm.Root, os.ModePerm)
 		entries, err := s.List(vm.Relative)
 
 		if err != nil {
@@ -71,17 +73,34 @@ func (v *ConfigVolume) syncMountPoint(vm *VolumeMount) error {
 			return err
 		}
 
+		os.MkdirAll(vm.Root, os.ModePerm)
 		v.syncFolder(entries, vm.Root, vm.Relative)
 	} else {
-		os.MkdirAll(path.Dir(vm.Root), os.ModePerm)
 		entry, err := s.Get(vm.Relative)
-
 		if err != nil {
 			v.logger.Error(err)
 			return err
 		}
 
-		if err := ioutil.WriteFile(vm.Root, entry.Value, 0644); err != nil {
+		os.MkdirAll(path.Dir(vm.Root), os.ModePerm)
+
+		mode := 0644
+		if vm.Mode > 0 {
+			mode = vm.Mode
+		}
+
+		data := entry.Value
+		if vm.TemplateGenerator {
+			tmpl := NewTemplate(v.store)
+			tmplOutput, err := tmpl.Parse(string(data), nil)
+
+			if err != nil {
+				v.logger.Error(err)
+			}
+			data = []byte(tmplOutput)
+		}
+
+		if err := ioutil.WriteFile(vm.Root, data, os.FileMode(mode)); err != nil {
 			v.logger.Error(err)
 			return err
 		}
@@ -100,6 +119,7 @@ func (v *ConfigVolume) volumeExist(name string) bool {
 // In this case a former Get call returned
 func (v *ConfigVolume) Create(r *volume.CreateRequest) error {
 	v.logger.Debugf("Create volume %s", r.Name)
+
 	v.m.Lock()
 	defer v.m.Unlock()
 
@@ -115,6 +135,18 @@ func (v *ConfigVolume) Create(r *volume.CreateRequest) error {
 		Root:             volumePath,
 		Relative:         r.Name,
 		ReferenceCounter: 0,
+	}
+
+	// template mode
+	if v, ok := r.Options["tmpl"]; ok && len(v) > 0 {
+		vm.TemplateGenerator = true
+	}
+
+	// mode bits
+	if v, ok := r.Options["mode"]; ok && len(v) > 0 {
+		if m, err := strconv.ParseInt(v, 8, 64); err == nil {
+			vm.Mode = int(m)
+		}
 	}
 
 	v.volumes[r.Name] = vm
@@ -167,6 +199,7 @@ func (v *ConfigVolume) Remove(r *volume.RemoveRequest) error {
 	defer v.m.Unlock()
 
 	if v.volumeExist(r.Name) {
+		os.RemoveAll(v.volumes[r.Name].Root)
 		delete(v.volumes, r.Name)
 	}
 
@@ -200,6 +233,7 @@ func (v *ConfigVolume) Mount(r *volume.MountRequest) (*volume.MountResponse, err
 
 	if vm, ok := v.volumes[r.Name]; ok {
 		v.syncMountPoint(vm)
+		vm.ReferenceCounter += 1
 		res = &volume.MountResponse{
 			Mountpoint: vm.Root,
 		}
@@ -213,6 +247,10 @@ func (v *ConfigVolume) Unmount(r *volume.UnmountRequest) error {
 	v.logger.Debugf("Unmounting volume %s", r.Name)
 	v.m.Lock()
 	defer v.m.Unlock()
+
+	if vm, ok := v.volumes[r.Name]; ok {
+		vm.ReferenceCounter -= 1
+	}
 
 	return nil
 }
