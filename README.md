@@ -4,6 +4,10 @@
 
 # Docker Configuration Volume plugin
 
+## ATTENTION
+
+This is a prototype. Do not use in production!
+
 ## Dependencies
 
 * go
